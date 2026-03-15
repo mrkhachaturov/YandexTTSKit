@@ -123,6 +123,13 @@ public final class YandexTTSClient: Sendable {
     ///
     /// Returns an `AsyncThrowingStream` of audio chunks decoded from the
     /// streamed JSON response. Each chunk contains raw audio bytes.
+    /// Synthesize speech using API v3 (utteranceSynthesis).
+    ///
+    /// Returns an `AsyncThrowingStream` of audio chunks decoded from the
+    /// streamed JSON response. Each chunk contains raw audio bytes.
+    ///
+    /// - Parameter unsafeMode: When true, allows texts up to 5000 chars (default v3 limit is 250 chars / 24s).
+    ///   May cause slight quality degradation on very long texts.
     public func streamSynthesizeV3(
         text: String,
         voice: String = "marina",
@@ -131,7 +138,8 @@ public final class YandexTTSClient: Sendable {
         volume: Double? = nil,
         pitchShift: Double? = nil,
         containerFormat: YandexTTSContainerFormat = .oggOpus,
-        loudnessNormalization: YandexTTSLoudnessNormalization? = nil
+        loudnessNormalization: YandexTTSLoudnessNormalization? = nil,
+        unsafeMode: Bool = true
     ) -> AsyncThrowingStream<Data, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -141,6 +149,7 @@ public final class YandexTTSClient: Sendable {
                         speed: speed, volume: volume, pitchShift: pitchShift,
                         containerFormat: containerFormat,
                         loudnessNormalization: loudnessNormalization,
+                        unsafeMode: unsafeMode,
                         continuation: continuation
                     )
                 } catch {
@@ -180,6 +189,7 @@ public final class YandexTTSClient: Sendable {
         pitchShift: Double?,
         containerFormat: YandexTTSContainerFormat,
         loudnessNormalization: YandexTTSLoudnessNormalization?,
+        unsafeMode: Bool,
         continuation: AsyncThrowingStream<Data, Error>.Continuation
     ) async throws {
         guard let url = URL(string: v3BaseURL) else {
@@ -204,6 +214,9 @@ public final class YandexTTSClient: Sendable {
         ]
         if let norm = loudnessNormalization {
             body["loudnessNormalizationType"] = norm.rawValue
+        }
+        if unsafeMode {
+            body["unsafeMode"] = true
         }
 
         let jsonData = try JSONSerialization.data(withJSONObject: body)
